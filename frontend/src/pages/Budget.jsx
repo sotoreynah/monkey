@@ -10,14 +10,84 @@ export default function Budget() {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
   })
   const [loading, setLoading] = useState(true)
+  const [editMode, setEditMode] = useState(false)
+  const [editedTargets, setEditedTargets] = useState({})
 
   useEffect(() => {
     setLoading(true)
+    setEditMode(false)
     api.get('/budget', { params: { month } })
-      .then(res => setData(res.data))
+      .then(res => {
+        setData(res.data)
+        // Initialize edited targets from current data
+        const targets = {}
+        res.data.categories.forEach(c => {
+          targets[c.category] = c.target
+        })
+        setEditedTargets(targets)
+      })
       .catch(console.error)
       .finally(() => setLoading(false))
   }, [month])
+
+  const handleTargetChange = (category, value) => {
+    setEditedTargets(prev => ({
+      ...prev,
+      [category]: parseFloat(value) || 0
+    }))
+  }
+
+  const handleSave = async () => {
+    const targetsArray = Object.entries(editedTargets).map(([category, monthly_target]) => ({
+      category,
+      monthly_target,
+      is_fixed: false
+    }))
+
+    try {
+      await api.post(`/budget/targets/${month}`, targetsArray)
+      setEditMode(false)
+      // Reload data
+      const res = await api.get('/budget', { params: { month } })
+      setData(res.data)
+    } catch (err) {
+      console.error('Failed to save budget targets:', err)
+      alert('Failed to save budget targets')
+    }
+  }
+
+  const handleCopyFromPrevious = async () => {
+    const [year, monthNum] = month.split('-').map(Number)
+    const prevDate = new Date(year, monthNum - 2, 1) // -2 because monthNum is 1-indexed
+    const prevMonth = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, '0')}`
+
+    if (confirm(`Copy budget targets from ${prevMonth}?`)) {
+      try {
+        await api.post(`/budget/targets/${month}/copy-from/${prevMonth}`)
+        // Reload data
+        const res = await api.get('/budget', { params: { month } })
+        setData(res.data)
+        const targets = {}
+        res.data.categories.forEach(c => {
+          targets[c.category] = c.target
+        })
+        setEditedTargets(targets)
+      } catch (err) {
+        console.error('Failed to copy budget targets:', err)
+        alert('Failed to copy budget targets from previous month')
+      }
+    }
+  }
+
+  const handleAddCategory = () => {
+    const category = prompt('Enter category name:')
+    if (category && category.trim()) {
+      setEditedTargets(prev => ({
+        ...prev,
+        [category.trim()]: 0
+      }))
+    }
+  }
 
   if (loading) return <div className="text-center py-12">Loading budget...</div>
   if (!data) return <div className="text-center py-12">No budget data</div>
@@ -25,6 +95,12 @@ export default function Budget() {
   const chartData = data.categories
     .filter(c => c.target > 0 || c.actual > 0)
     .sort((a, b) => b.actual - a.actual)
+  
+  // Calculate totals using edited targets if in edit mode
+  const totalTarget = editMode 
+    ? Object.values(editedTargets).reduce((sum, val) => sum + val, 0)
+    : data.total_target
+  const totalVariance = totalTarget - data.total_actual
 
   return (
     <div>
@@ -38,14 +114,51 @@ export default function Budget() {
             onChange={e => setMonth(e.target.value)}
             className="px-3 py-2 border rounded-lg text-sm"
           />
+          {!editMode ? (
+            <>
+              <button
+                onClick={() => setEditMode(true)}
+                className="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm hover:bg-gray-800"
+              >
+                Edit Budget
+              </button>
+              <button
+                onClick={handleCopyFromPrevious}
+                className="px-4 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50"
+              >
+                Copy from Previous
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={handleSave}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700"
+              >
+                Save Changes
+              </button>
+              <button
+                onClick={() => setEditMode(false)}
+                className="px-4 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAddCategory}
+                className="px-4 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50"
+              >
+                + Add Category
+              </button>
+            </>
+          )}
         </div>
       </div>
 
       {/* Summary */}
       <div className="grid grid-cols-3 gap-4 mb-8">
         <div className="bg-white rounded-xl shadow p-5">
-          <p className="text-sm text-gray-500">Budget Target</p>
-          <p className="text-2xl font-bold">{formatCurrency(data.total_target)}</p>
+          <p className="text-sm text-gray-500">Budget Target {editMode && <span className="text-xs">(editing)</span>}</p>
+          <p className="text-2xl font-bold">{formatCurrency(totalTarget)}</p>
         </div>
         <div className="bg-white rounded-xl shadow p-5">
           <p className="text-sm text-gray-500">Actual Spent</p>
@@ -53,8 +166,8 @@ export default function Budget() {
         </div>
         <div className="bg-white rounded-xl shadow p-5">
           <p className="text-sm text-gray-500">Variance</p>
-          <p className={`text-2xl font-bold ${data.total_variance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-            {data.total_variance >= 0 ? '+' : ''}{formatCurrency(data.total_variance)}
+          <p className={`text-2xl font-bold ${totalVariance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+            {totalVariance >= 0 ? '+' : ''}{formatCurrency(totalVariance)}
           </p>
         </div>
       </div>
@@ -88,19 +201,56 @@ export default function Budget() {
             </tr>
           </thead>
           <tbody>
-            {data.categories.map(row => (
-              <tr key={row.category} className="border-t">
-                <td className="px-4 py-2 font-medium">{row.category}</td>
-                <td className="px-4 py-2 text-right text-gray-500">{formatCurrency(row.target)}</td>
-                <td className="px-4 py-2 text-right">{formatCurrency(row.actual)}</td>
-                <td className={`px-4 py-2 text-right ${row.variance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {row.variance >= 0 ? '+' : ''}{formatCurrency(row.variance)}
+            {data.categories.map(row => {
+              const editedTarget = editedTargets[row.category] ?? row.target
+              const variance = editedTarget - row.actual
+              const overBudget = row.actual > editedTarget && editedTarget > 0
+              
+              return (
+                <tr key={row.category} className="border-t">
+                  <td className="px-4 py-2 font-medium">{row.category}</td>
+                  <td className="px-4 py-2 text-right text-gray-500">
+                    {editMode ? (
+                      <input
+                        type="number"
+                        value={editedTarget}
+                        onChange={e => handleTargetChange(row.category, e.target.value)}
+                        className="w-28 px-2 py-1 border rounded text-right"
+                        step="0.01"
+                      />
+                    ) : (
+                      formatCurrency(row.target)
+                    )}
+                  </td>
+                  <td className="px-4 py-2 text-right">{formatCurrency(row.actual)}</td>
+                  <td className={`px-4 py-2 text-right ${variance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {variance >= 0 ? '+' : ''}{formatCurrency(variance)}
+                  </td>
+                  <td className="px-4 py-2 text-center">
+                    {overBudget
+                      ? <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700">Over</span>
+                      : <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700">OK</span>
+                    }
+                  </td>
+                </tr>
+              )
+            })}
+            {editMode && Object.keys(editedTargets).filter(cat => !data.categories.find(c => c.category === cat)).map(category => (
+              <tr key={category} className="border-t bg-blue-50">
+                <td className="px-4 py-2 font-medium">{category}</td>
+                <td className="px-4 py-2 text-right">
+                  <input
+                    type="number"
+                    value={editedTargets[category]}
+                    onChange={e => handleTargetChange(category, e.target.value)}
+                    className="w-28 px-2 py-1 border rounded text-right"
+                    step="0.01"
+                  />
                 </td>
+                <td className="px-4 py-2 text-right text-gray-400">$0.00</td>
+                <td className="px-4 py-2 text-right text-gray-400">—</td>
                 <td className="px-4 py-2 text-center">
-                  {row.over_budget
-                    ? <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700">Over</span>
-                    : <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700">OK</span>
-                  }
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">New</span>
                 </td>
               </tr>
             ))}
@@ -108,10 +258,10 @@ export default function Budget() {
           <tfoot className="bg-gray-50 font-semibold">
             <tr>
               <td className="px-4 py-3">Total</td>
-              <td className="px-4 py-3 text-right">{formatCurrency(data.total_target)}</td>
+              <td className="px-4 py-3 text-right">{formatCurrency(totalTarget)}</td>
               <td className="px-4 py-3 text-right">{formatCurrency(data.total_actual)}</td>
-              <td className={`px-4 py-3 text-right ${data.total_variance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                {data.total_variance >= 0 ? '+' : ''}{formatCurrency(data.total_variance)}
+              <td className={`px-4 py-3 text-right ${totalVariance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                {totalVariance >= 0 ? '+' : ''}{formatCurrency(totalVariance)}
               </td>
               <td />
             </tr>
