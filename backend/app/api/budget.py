@@ -48,6 +48,7 @@ def get_budget_vs_actual(
             Transaction.transaction_date <= month_end,
             Transaction.is_debit == True,
             Transaction.is_excluded == False,
+            Transaction.category != 'Payment',  # Exclude credit card payments from spending
         )
         .group_by(Transaction.category)
         .all()
