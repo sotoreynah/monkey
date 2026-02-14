@@ -5,7 +5,7 @@ import hashlib
 from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, Form
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.models.transaction import ImportBatch
+from app.models.transaction import ImportBatch, TransactionSource
 from app.models.user import User
 from app.services.import_service import ImportService
 from app.schemas.transaction import ImportResponse
@@ -19,6 +19,7 @@ settings = get_settings()
 @router.post("/upload", response_model=ImportResponse)
 async def upload_csv(
     file: UploadFile = File(...),
+    source_id: int | None = Form(None),
     db: Session = Depends(get_db),
     _: User = Depends(get_current_user),
 ):
@@ -42,7 +43,7 @@ async def upload_csv(
 
     try:
         service = ImportService(db)
-        result = service.import_csv(file_path, file_hash, file.filename)
+        result = service.import_csv(file_path, file_hash, file.filename, source_id)
         return result
     except ValueError as e:
         os.remove(file_path)
@@ -68,3 +69,10 @@ def import_history(db: Session = Depends(get_db), _: User = Depends(get_current_
         }
         for b in batches
     ]
+
+
+@router.get("/sources")
+def list_sources(db: Session = Depends(get_db), _: User = Depends(get_current_user)):
+    """List available transaction sources for manual selection during import"""
+    sources = db.query(TransactionSource).filter(TransactionSource.active == True).all()
+    return [{"id": s.id, "name": s.name, "type": s.type} for s in sources]

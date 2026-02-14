@@ -27,10 +27,13 @@ export default function Import() {
   const [loanSuccess, setLoanSuccess] = useState(null)
   const [loanError, setLoanError] = useState(null)
   const [showLoanForm, setShowLoanForm] = useState(false)
+  const [sources, setSources] = useState([])
+  const [selectedSource, setSelectedSource] = useState('')
 
   useEffect(() => {
     api.get('/imports/history').then(res => setHistory(res.data)).catch(console.error)
     api.get('/loans').then(res => setLoans(res.data)).catch(console.error)
+    api.get('/imports/sources').then(res => setSources(res.data)).catch(console.error)
   }, [])
 
   const onDrop = useCallback(async (acceptedFiles) => {
@@ -43,6 +46,9 @@ export default function Import() {
 
     const formData = new FormData()
     formData.append('file', file)
+    if (selectedSource) {
+      formData.append('source_id', selectedSource)
+    }
 
     try {
       const res = await api.post('/imports/upload', formData, {
@@ -113,6 +119,29 @@ export default function Import() {
           </p>
         </div>
       )}
+
+      {/* Source Selection */}
+      <div className="bg-white rounded-xl shadow p-6 mb-6">
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Transaction Source <span className="text-red-500">*</span>
+        </label>
+        <select
+          value={selectedSource}
+          onChange={(e) => setSelectedSource(e.target.value)}
+          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+        >
+          <option value="">⚠️ Auto-detect (may be inaccurate)</option>
+          {sources.map(s => (
+            <option key={s.id} value={s.id}>
+              {s.name} ({s.type})
+            </option>
+          ))}
+        </select>
+        <p className="text-xs text-gray-500 mt-2">
+          <strong>⚠️ Manual selection recommended:</strong> Files with identical columns (Date, Transaction, Name, Memo, Amount) 
+          can be from different sources. Choose the correct source to avoid mis-categorization.
+        </p>
+      </div>
 
       {/* CSV Upload zone */}
       <div

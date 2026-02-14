@@ -25,6 +25,20 @@ class ImportService:
             f"Unknown CSV format. Columns found: {columns}. "
             f"Supported formats: Credit Card 6032, Apple Card, AMEX, Checking 1569"
         )
+    
+    def _get_parser_for_source(self, source: TransactionSource):
+        """Get parser based on source name"""
+        parser_map = {
+            "Credit Card 6032": CreditCard6032Parser,
+            "Checking": Checking1569Parser,
+            "Checking 1569": Checking1569Parser,
+            "Apple Card": AppleCardParser,
+            "AMEX": AmexParser,
+        }
+        parser_cls = parser_map.get(source.name)
+        if not parser_cls:
+            raise ValueError(f"No parser found for source: {source.name}")
+        return parser_cls()
 
     def get_or_create_source(self, parser) -> TransactionSource:
         source = self.db.query(TransactionSource).filter(
@@ -42,9 +56,17 @@ class ImportService:
             self.db.refresh(source)
         return source
 
-    def import_csv(self, file_path: str, file_hash: str, filename: str) -> dict:
-        parser = self.detect_parser(file_path)
-        source = self.get_or_create_source(parser)
+    def import_csv(self, file_path: str, file_hash: str, filename: str, source_id: int | None = None) -> dict:
+        if source_id:
+            # Use manually selected source
+            source = self.db.query(TransactionSource).get(source_id)
+            if not source:
+                raise ValueError(f"Source ID {source_id} not found")
+            parser = self._get_parser_for_source(source)
+        else:
+            # Auto-detect (existing behavior)
+            parser = self.detect_parser(file_path)
+            source = self.get_or_create_source(parser)
         raw_transactions = parser.parse(file_path)
 
         # Get existing hashes for this source to detect duplicates
