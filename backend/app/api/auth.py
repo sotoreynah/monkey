@@ -28,6 +28,7 @@ def login(request: LoginRequest, response: Response, db: Session = Depends(get_d
         secure=False,  # Set True in production with HTTPS
         samesite="lax",
         max_age=3600 * 24 * 7,
+        path="/",
     )
 
     return TokenResponse(access_token=token)
