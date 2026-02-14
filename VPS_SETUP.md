@@ -4,6 +4,8 @@ Server configuration guide for deploying on Digital Ocean.
 
 **Target**: Ubuntu 22.04/24.04 LTS | Domain: `monkey.workez.ai`
 
+**Architecture**: Docker runs backend + frontend containers on localhost. The host's existing nginx reverse-proxies to them.
+
 ---
 
 ## 1. Initial Server Setup
@@ -96,52 +98,101 @@ git clone https://github.com/sotoreynah/monkey.git
 cd monkey
 
 # Create environment file
-cp .env.example backend/.env
-
-# Generate a secure secret key
-echo "SECRET_KEY=$(openssl rand -hex 32)" >> backend/.env
-
-# IMPORTANT: Edit backend/.env to set your actual password
+cp backend/.env backend/.env.bak   # if .env already exists
 nano backend/.env
-# Change ADMIN_PASSWORD=changeme to something strong
-
-# Create data directories
-mkdir -p data uploads certbot/conf certbot/www
 ```
 
-## 6. Initial Boot (HTTP only, for SSL setup)
-
-First boot without SSL to get the certbot challenge working:
+**Required `.env` contents:**
+```
+SECRET_KEY=<run: openssl rand -hex 32>
+ADMIN_USERNAME=hector
+ADMIN_PASSWORD=<your-strong-password>
+DATABASE_URL=sqlite:///./data/stopmonkey.db
+UPLOAD_DIR=./uploads
+CORS_ORIGINS=http://localhost:5173,http://localhost:3000,http://monkey.workez.ai,https://monkey.workez.ai
+```
 
 ```bash
-# Start services
+# Create data directories
+mkdir -p data uploads
+
+# Build and start containers
 docker compose up -d --build
 
-# Verify all containers are running
+# Verify containers are running
 docker compose ps
+# Should show: monkey_backend (port 127.0.0.1:8000) and monkey_frontend (port 127.0.0.1:3000)
 
-# Check backend logs
-docker compose logs backend
+# Verify backend responds
+curl http://127.0.0.1:8000/api/health
+# Expected: {"status":"ok","app":"Stop The Monkey"}
 
-# Test: http://YOUR_DROPLET_IP should show the app
+# Verify frontend responds
+curl -s http://127.0.0.1:3000 | head -5
+# Expected: HTML content
+```
+
+## 6. Configure Host Nginx (Reverse Proxy)
+
+Since the VPS already runs nginx for other sites, we add a site config for monkey:
+
+```bash
+# Create site config
+sudo nano /etc/nginx/sites-available/monkey.workez.ai
+```
+
+Paste the following:
+
+```nginx
+server {
+    listen 80;
+    server_name monkey.workez.ai;
+
+    client_max_body_size 10M;
+
+    location /api {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+}
+```
+
+```bash
+# Enable the site
+sudo ln -s /etc/nginx/sites-available/monkey.workez.ai /etc/nginx/sites-enabled/
+
+# Test nginx config
+sudo nginx -t
+
+# Reload nginx
+sudo systemctl reload nginx
+
+# Test from outside (or browser)
+curl http://monkey.workez.ai/api/health
 ```
 
 ## 7. SSL Certificate
 
 ```bash
-# Get initial certificate
-docker compose run --rm certbot certonly \
-  --webroot \
-  --webroot-path=/var/www/certbot \
-  -d monkey.workez.ai \
-  --email your-email@example.com \
-  --agree-tos \
-  --no-eff-email
+# Use certbot with the host nginx plugin
+sudo certbot --nginx -d monkey.workez.ai
 
-# Restart nginx to pick up the cert
-docker compose restart nginx
+# Certbot will:
+#   1. Obtain a Let's Encrypt certificate
+#   2. Auto-modify the nginx config to add SSL directives
+#   3. Set up auto-renewal
 
-# Verify: https://monkey.workez.ai should work
+# Verify HTTPS works
+curl https://monkey.workez.ai/api/health
 ```
 
 ## 8. Backup Script
@@ -196,9 +247,10 @@ sudo dpkg-reconfigure -plow unattended-upgrades
 | View backend logs | `docker compose logs -f backend` |
 | View all logs | `docker compose logs -f` |
 | Manual backup | `~/backup.sh` |
-| Renew SSL | `docker compose run --rm certbot renew && docker compose restart nginx` |
+| Renew SSL | `sudo certbot renew` |
 | Check disk space | `df -h` |
 | Check running containers | `docker compose ps` |
+| Reload host nginx | `sudo systemctl reload nginx` |
 | Access database | `docker compose exec backend python -c "import sqlite3; db=sqlite3.connect('data/stopmonkey.db'); print(db.execute('SELECT count(*) FROM transactions').fetchone())"` |
 
 ---
@@ -211,10 +263,18 @@ docker compose logs    # Check for errors
 docker compose down && docker compose up -d --build    # Full rebuild
 ```
 
+**Port conflict (address already in use):**
+```bash
+# Check what's using a port
+sudo lsof -i :8000
+sudo lsof -i :3000
+# The containers bind to 127.0.0.1 only, so they shouldn't conflict with nginx on 80/443
+```
+
 **SSL cert expired:**
 ```bash
-docker compose run --rm certbot renew
-docker compose restart nginx
+sudo certbot renew
+sudo systemctl reload nginx
 ```
 
 **Database locked:**
@@ -225,4 +285,16 @@ docker compose restart backend
 **Out of disk space:**
 ```bash
 docker system prune -a    # Remove unused Docker images
+```
+
+**Host nginx not proxying:**
+```bash
+# Check if site is enabled
+ls -la /etc/nginx/sites-enabled/monkey.workez.ai
+
+# Test nginx config
+sudo nginx -t
+
+# Check nginx error log
+sudo tail -50 /var/log/nginx/error.log
 ```
