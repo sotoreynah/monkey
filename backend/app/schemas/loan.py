@@ -22,11 +22,32 @@ class LoanResponse(BaseModel):
         from_attributes = True
 
 
-class LoanUpdate(BaseModel):
-    current_balance: float | None = None
+class LoanCreate(BaseModel):
+    name: str
+    loan_type: str
+    creditor: str | None = None
+    original_amount: float | None = None
+    current_balance: float
+    interest_rate: float | None = None
     monthly_payment: float | None = None
+    end_date: date | None = None
+    payments_remaining: int | None = None
+    priority_rank: int | None = None
+    notes: str | None = None
+
+
+class LoanUpdate(BaseModel):
+    name: str | None = None
+    loan_type: str | None = None
+    creditor: str | None = None
+    original_amount: float | None = None
+    current_balance: float | None = None
+    interest_rate: float | None = None
+    monthly_payment: float | None = None
+    end_date: date | None = None
     payments_remaining: int | None = None
     is_active: bool | None = None
+    priority_rank: int | None = None
     notes: str | None = None
 
 

@@ -6,10 +6,23 @@ from dateutil.relativedelta import relativedelta
 from app.database import get_db
 from app.models.loan import Loan
 from app.models.user import User
-from app.schemas.loan import LoanResponse, LoanUpdate, LoanPayoffProjection
+from app.schemas.loan import LoanResponse, LoanCreate, LoanUpdate, LoanPayoffProjection
 from app.api.deps import get_current_user
 
 router = APIRouter(prefix="/api/loans", tags=["loans"])
+
+
+@router.post("", response_model=LoanResponse, status_code=201)
+def create_loan(
+    data: LoanCreate,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    loan = Loan(**data.model_dump(), is_active=True)
+    db.add(loan)
+    db.commit()
+    db.refresh(loan)
+    return loan
 
 
 @router.get("", response_model=list[LoanResponse])
@@ -98,3 +111,16 @@ def update_loan(
     db.commit()
     db.refresh(loan)
     return loan
+
+
+@router.delete("/{loan_id}", status_code=204)
+def delete_loan(
+    loan_id: int,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    loan = db.query(Loan).filter(Loan.id == loan_id).first()
+    if not loan:
+        raise HTTPException(status_code=404, detail="Loan not found")
+    db.delete(loan)
+    db.commit()

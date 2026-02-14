@@ -1,4 +1,4 @@
-"""Initialize the database with tables, admin user, plan data, loans, and budget targets."""
+"""Initialize the database with tables, admin user, plan data, and milestones."""
 from datetime import date, timedelta
 from app.database import engine, SessionLocal, Base
 from app.models import *  # noqa — imports all models so Base knows about them
@@ -98,70 +98,6 @@ def init_database():
                 ))
             db.commit()
             print("Created plan with 252 weekly snapshots")
-
-        # --- Loans ---
-        if not db.query(Loan).first():
-            loans = [
-                # BNPL (sample data — replace with real values via .env or admin UI)
-                ("BNPL Item 1", "bnpl", "BNPL Lender", 1000, 350, 0, 350, date(2026, 3, 1), 1, 1),
-                ("BNPL Item 2", "bnpl", "BNPL Lender", 3200, 700, 0, 175, date(2026, 6, 2), 4, 2),
-                ("BNPL Item 3", "bnpl", "BNPL Lender", 750, 500, 0, 125, date(2026, 6, 11), 4, 3),
-                ("BNPL Item 4", "bnpl", "BNPL Lender", 5000, 1800, 0, 140, date(2027, 2, 14), 13, 4),
-                ("BNPL Item 5", "bnpl", "BNPL Lender", 10000, 8500, 0, 850, date(2026, 12, 5), 10, 5),
-                # Credit cards
-                ("Credit Card A", "credit_card", "Bank A", None, 5000, 0.2299, 500, None, None, 6),
-                ("Credit Card B", "credit_card", "Bank B", None, 6000, 0.2199, 500, None, None, 7),
-                ("Credit Card C", "credit_card", "Bank C", None, 3000, 0.2499, 300, None, None, 8),
-                # Auto loans
-                ("Auto Loan 1", "auto", "Auto Lender A", None, 15000, 0.0599, 500, None, None, 9),
-                ("Auto Loan 2", "auto", "Auto Lender B", None, 12000, 0.0699, 420, None, None, 10),
-                ("Auto Loan 3", "auto", "Auto Lender C", None, 25000, 0.0549, 775, None, None, 11),
-                # Personal
-                ("Personal Loan 1", "personal", "Lender A", 60000, 60000, 0.0799, 1200, None, None, 12),
-                ("Personal Loan 2", "personal", "Lender B", None, 80000, 0.0699, 2750, None, None, 13),
-                # Mortgage
-                ("Mortgage", "mortgage", "Mortgage Lender", None, 350000, 0.0699, 3700, None, None, 99),
-            ]
-            for name, ltype, creditor, orig, balance, rate, payment, end, remaining, rank in loans:
-                db.add(Loan(
-                    name=name, loan_type=ltype, creditor=creditor,
-                    original_amount=orig, current_balance=balance,
-                    interest_rate=rate, monthly_payment=payment,
-                    end_date=end, payments_remaining=remaining,
-                    is_active=True, priority_rank=rank,
-                ))
-            db.commit()
-            print("Seeded loans")
-
-        # --- Budget Targets (Phase 1 from the plan) ---
-        if not db.query(BudgetTarget).first():
-            phase1_targets = [
-                (1, "Mortgage", 3700, True),
-                (1, "Auto Loan", 1700, True),
-                (1, "BNPL Payment", 1100, True),
-                (1, "Personal Loan", 4000, True),
-                (1, "CC Payment", 1500, True),
-                (1, "Airlines/Travel", 100, False),
-                (1, "Entertainment", 100, False),
-                (1, "Dining", 150, False),
-                (1, "Shopping", 100, False),
-                (1, "Clothing", 50, False),
-                (1, "Furnishing", 0, False),
-                (1, "Fitness", 150, False),
-                (1, "Groceries", 700, False),
-                (1, "Subscriptions", 60, False),
-                (1, "Investing", 0, False),
-                (1, "Transfers", 400, True),
-                (1, "Cash", 100, False),
-                (1, "Other", 200, False),
-            ]
-            for phase, cat, target, fixed in phase1_targets:
-                db.add(BudgetTarget(
-                    phase_number=phase, category=cat,
-                    monthly_target=target, is_fixed=fixed,
-                ))
-            db.commit()
-            print("Seeded Phase 1 budget targets")
 
         # --- Milestones ---
         if not db.query(Milestone).first():
