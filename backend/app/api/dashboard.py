@@ -40,6 +40,7 @@ def get_dashboard(db: Session = Depends(get_db), _: User = Depends(get_current_u
         Transaction.transaction_date >= month_start,
         Transaction.is_debit == True,
         Transaction.is_excluded == False,
+        Transaction.category != 'Payment',  # Exclude credit card payments from spending
     ).scalar() or 0
 
     # Budget target for current phase
@@ -56,6 +57,7 @@ def get_dashboard(db: Session = Depends(get_db), _: User = Depends(get_current_u
             Transaction.transaction_date <= m_end,
             Transaction.is_debit == True,
             Transaction.is_excluded == False,
+            Transaction.category != 'Payment',  # Exclude credit card payments from spending
         ).scalar() or 0
         trend.append({
             "month": m_start.strftime("%b %Y"),
