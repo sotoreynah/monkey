@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts'
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 import api from '../services/api'
 import { formatCurrency } from '../utils/formatters'
 
@@ -90,9 +90,30 @@ export default function Dashboard() {
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis dataKey="month" />
             <YAxis tickFormatter={v => `$${(v / 1000).toFixed(0)}k`} />
-            <Tooltip formatter={v => formatCurrency(v)} />
-            <ReferenceLine y={data.month_budget_target} stroke="#10B981" strokeDasharray="5 5" label="Target" />
-            <Line type="monotone" dataKey="spent" stroke="#111827" strokeWidth={2} dot={{ r: 4 }} />
+            <Tooltip 
+              formatter={(value, name) => [
+                formatCurrency(value), 
+                name === 'spent' ? 'Actual Spending' : 'Budget Target'
+              ]} 
+            />
+            <Legend />
+            <Line 
+              type="monotone" 
+              dataKey="target" 
+              stroke="#10B981" 
+              strokeWidth={2} 
+              strokeDasharray="5 5" 
+              dot={{ r: 3 }} 
+              name="Budget Target"
+            />
+            <Line 
+              type="monotone" 
+              dataKey="spent" 
+              stroke="#111827" 
+              strokeWidth={2} 
+              dot={{ r: 4 }} 
+              name="Actual Spending"
+            />
           </LineChart>
         </ResponsiveContainer>
       </div>
@@ -105,7 +126,7 @@ export default function Dashboard() {
         </Link>
         <Link to="/import" className="bg-white rounded-xl shadow p-5 text-center hover:shadow-md transition-shadow">
           <div className="text-3xl mb-2">📤</div>
-          <p className="font-medium">Upload CSV</p>
+          <p className="font-medium">Import Data</p>
         </Link>
         <Link to="/loans" className="bg-white rounded-xl shadow p-5 text-center hover:shadow-md transition-shadow">
           <div className="text-3xl mb-2">🏦</div>

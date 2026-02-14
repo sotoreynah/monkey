@@ -78,7 +78,8 @@ class BudgetTarget(Base):
     __tablename__ = "budget_targets"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    phase_number = Column(Integer, nullable=False)
+    phase_number = Column(Integer, nullable=True)  # Made nullable for month-specific targets
+    month = Column(String, nullable=True)  # YYYY-MM format for month-specific budgets
     category = Column(String, nullable=False)
     monthly_target = Column(Float, nullable=False)
     is_fixed = Column(Boolean, default=False)

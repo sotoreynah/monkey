@@ -2,7 +2,7 @@
 from datetime import date, timedelta
 from app.database import engine, SessionLocal, Base
 from app.models import *  # noqa — imports all models so Base knows about them
-from app.utils.security import hash_password
+from app.utils.security import hash_password, validate_password
 from app.config import get_settings
 
 
@@ -17,6 +17,19 @@ def init_database():
         # --- Admin user ---
         existing = db.query(User).filter(User.username == settings.ADMIN_USERNAME).first()
         if not existing:
+            # Validate password strength
+            is_valid, error_msg = validate_password(settings.ADMIN_PASSWORD)
+            if not is_valid:
+                raise ValueError(
+                    f"Admin password does not meet security requirements: {error_msg}\n"
+                    f"Please set a strong password in .env file:\n"
+                    f"  - At least 12 characters\n"
+                    f"  - At least 1 uppercase letter\n"
+                    f"  - At least 1 lowercase letter\n"
+                    f"  - At least 1 number\n"
+                    f"  - At least 1 special character (!@#$%^&*)"
+                )
+            
             user = User(
                 username=settings.ADMIN_USERNAME,
                 password_hash=hash_password(settings.ADMIN_PASSWORD),

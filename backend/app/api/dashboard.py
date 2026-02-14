@@ -52,6 +52,8 @@ def get_dashboard(db: Session = Depends(get_db), _: User = Depends(get_current_u
     for i in range(5, -1, -1):
         m_start = (today - relativedelta(months=i)).replace(day=1)
         m_end = (m_start + relativedelta(months=1)) - relativedelta(days=1)
+        month_str = m_start.strftime("%Y-%m")
+        
         spent = db.query(func.sum(Transaction.amount)).filter(
             Transaction.transaction_date >= m_start,
             Transaction.transaction_date <= m_end,
@@ -59,10 +61,18 @@ def get_dashboard(db: Session = Depends(get_db), _: User = Depends(get_current_u
             Transaction.is_excluded == False,
             Transaction.category != 'Payment',  # Exclude credit card payments from spending
         ).scalar() or 0
+        
+        # Get month-specific budget target (or fall back to phase target)
+        month_targets = db.query(BudgetTarget).filter(BudgetTarget.month == month_str).all()
+        if month_targets:
+            target_for_month = sum(bt.monthly_target for bt in month_targets)
+        else:
+            target_for_month = month_target  # Use phase default if no month-specific target
+        
         trend.append({
             "month": m_start.strftime("%b %Y"),
             "spent": round(float(spent), 2),
-            "target": month_target,
+            "target": round(float(target_for_month), 2),
         })
 
     return DashboardResponse(
