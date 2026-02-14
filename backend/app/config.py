@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_DAYS: int = 7
     DATABASE_URL: str = "sqlite:///./data/stopmonkey.db"
     UPLOAD_DIR: str = "./uploads"
-    ADMIN_USERNAME: str = "hector"
+    ADMIN_USERNAME: str = "admin"
     ADMIN_PASSWORD: str = "changeme"
     CORS_ORIGINS: str = "http://localhost:5173,http://localhost:3000"
 

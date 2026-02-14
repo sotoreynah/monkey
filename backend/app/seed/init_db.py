@@ -27,10 +27,10 @@ def init_database():
 
         # --- Transaction sources ---
         sources = [
-            ("Credit Card 6032", "credit_card", "6032", "US Bank"),
-            ("Apple Card", "credit_card", None, "Apple/Goldman Sachs"),
-            ("AMEX", "credit_card", "2003", "American Express"),
-            ("Checking 1569", "checking", "1569", "US Bank"),
+            ("Credit Card A", "credit_card", "XXXX", "Bank A"),
+            ("Credit Card B", "credit_card", None, "Bank B"),
+            ("Credit Card C", "credit_card", "XXXX", "Bank C"),
+            ("Checking", "checking", "XXXX", "Bank A"),
         ]
         for name, stype, last4, inst in sources:
             if not db.query(TransactionSource).filter(TransactionSource.name == name).first():
@@ -55,17 +55,17 @@ def init_database():
             # --- Plan Phases ---
             phases = [
                 (1, "Stop the Bleeding", 1, 6, 1, 26, "#EF4444",
-                 "Emergency fund + 50% spending reduction",
-                 "Build $1,000 starter emergency fund. Cut discretionary spending by 50%. Remove credit cards from auto-pay."),
+                 "Emergency fund + spending reduction",
+                 "Build starter emergency fund. Cut discretionary spending. Remove credit cards from auto-pay."),
                 (2, "Debt Avalanche", 7, 24, 27, 104, "#F97316",
                  "Eliminate all non-mortgage debt",
-                 "Pay off all credit cards, Affirm loans, auto loans, and personal loans using the avalanche method."),
+                 "Pay off all credit cards, BNPL loans, auto loans, and personal loans using the avalanche method."),
                 (3, "Build the Fortress", 25, 42, 105, 182, "#3B82F6",
                  "12-month emergency fund + max retirement",
-                 "Build $156,000 emergency fund. Contribute 15% to retirement. Fund 529 plans."),
+                 "Build full emergency fund. Contribute 15% to retirement. Fund education savings."),
                 (4, "Build the Runway", 43, 58, 183, 252, "#10B981",
                  "Accelerate mortgage + build runway",
-                 "Extra mortgage principal payments. Build 12+ months of runway for potential job transition."),
+                 "Extra mortgage principal payments. Build 12+ months of runway for potential career transition."),
             ]
             for pnum, name, sm, em, sw, ew, color, goal, desc in phases:
                 db.add(PlanPhase(
@@ -102,25 +102,25 @@ def init_database():
         # --- Loans ---
         if not db.query(Loan).first():
             loans = [
-                # Affirm BNPL
-                ("Dyson", "bnpl", "Affirm", 970.18, 323.40, 0, 323.39, date(2026, 3, 1), 1, 1),
-                ("Eight Sleep", "bnpl", "Affirm", 3157.47, 701.59, 0, 175.42, date(2026, 6, 2), 4, 2),
-                ("Supernote", "bnpl", "Affirm", 721.18, 506.19, 0, 126.55, date(2026, 6, 11), 4, 3),
-                ("Technogym", "bnpl", "Affirm", 5012.71, 1810.19, 0, 139.24, date(2027, 2, 14), 13, 4),
-                ("Design Within Reach", "bnpl", "Affirm", 10266.86, 8555.72, 0, 855.57, date(2026, 12, 5), 10, 5),
-                # Credit cards (balances approximate from plan)
-                ("Credit Card 6032", "credit_card", "US Bank", None, 5000, 0.2299, 500, None, None, 6),
-                ("AMEX", "credit_card", "American Express", None, 5742, 0.2199, 500, None, None, 7),
-                ("Apple Card", "credit_card", "Goldman Sachs", None, 3000, 0.2499, 300, None, None, 8),
+                # BNPL (sample data — replace with real values via .env or admin UI)
+                ("BNPL Item 1", "bnpl", "BNPL Lender", 1000, 350, 0, 350, date(2026, 3, 1), 1, 1),
+                ("BNPL Item 2", "bnpl", "BNPL Lender", 3200, 700, 0, 175, date(2026, 6, 2), 4, 2),
+                ("BNPL Item 3", "bnpl", "BNPL Lender", 750, 500, 0, 125, date(2026, 6, 11), 4, 3),
+                ("BNPL Item 4", "bnpl", "BNPL Lender", 5000, 1800, 0, 140, date(2027, 2, 14), 13, 4),
+                ("BNPL Item 5", "bnpl", "BNPL Lender", 10000, 8500, 0, 850, date(2026, 12, 5), 10, 5),
+                # Credit cards
+                ("Credit Card A", "credit_card", "Bank A", None, 5000, 0.2299, 500, None, None, 6),
+                ("Credit Card B", "credit_card", "Bank B", None, 6000, 0.2199, 500, None, None, 7),
+                ("Credit Card C", "credit_card", "Bank C", None, 3000, 0.2499, 300, None, None, 8),
                 # Auto loans
-                ("VW Credit", "auto", "VW Credit Inc", None, 15000, 0.0599, 509, None, None, 9),
-                ("Santander Consumer", "auto", "Santander", None, 12000, 0.0699, 420, None, None, 10),
-                ("Tesla", "auto", "Tesla Finance", None, 25000, 0.0549, 775, None, None, 11),
-                # Personal / Large
-                ("LightStream", "personal", "LightStream/Truist", 60000, 60000, 0.0799, 1200, None, None, 12),
-                ("German American Bank", "personal", "German American Bank", None, 80000, 0.0699, 2762, None, None, 13),
+                ("Auto Loan 1", "auto", "Auto Lender A", None, 15000, 0.0599, 500, None, None, 9),
+                ("Auto Loan 2", "auto", "Auto Lender B", None, 12000, 0.0699, 420, None, None, 10),
+                ("Auto Loan 3", "auto", "Auto Lender C", None, 25000, 0.0549, 775, None, None, 11),
+                # Personal
+                ("Personal Loan 1", "personal", "Lender A", 60000, 60000, 0.0799, 1200, None, None, 12),
+                ("Personal Loan 2", "personal", "Lender B", None, 80000, 0.0699, 2750, None, None, 13),
                 # Mortgage
-                ("Mortgage", "mortgage", "Heartland Bank", None, 350000, 0.0699, 3712, None, None, 99),
+                ("Mortgage", "mortgage", "Mortgage Lender", None, 350000, 0.0699, 3700, None, None, 99),
             ]
             for name, ltype, creditor, orig, balance, rate, payment, end, remaining, rank in loans:
                 db.add(Loan(
@@ -136,10 +136,10 @@ def init_database():
         # --- Budget Targets (Phase 1 from the plan) ---
         if not db.query(BudgetTarget).first():
             phase1_targets = [
-                (1, "Mortgage", 3712, True),
-                (1, "Auto Loan", 1704, True),  # VW + Santander + Tesla
-                (1, "BNPL Payment", 1120, True),
-                (1, "Personal Loan", 3962, True),  # German American + LightStream
+                (1, "Mortgage", 3700, True),
+                (1, "Auto Loan", 1700, True),
+                (1, "BNPL Payment", 1100, True),
+                (1, "Personal Loan", 4000, True),
                 (1, "CC Payment", 1500, True),
                 (1, "Airlines/Travel", 100, False),
                 (1, "Entertainment", 100, False),
@@ -151,7 +151,7 @@ def init_database():
                 (1, "Groceries", 700, False),
                 (1, "Subscriptions", 60, False),
                 (1, "Investing", 0, False),
-                (1, "Remittances", 376, True),
+                (1, "Transfers", 400, True),
                 (1, "Cash", 100, False),
                 (1, "Other", 200, False),
             ]
@@ -166,17 +166,17 @@ def init_database():
         # --- Milestones ---
         if not db.query(Milestone).first():
             milestones = [
-                (1, "Baby Step 1: $1,000 Emergency Fund", "$1,000 in separate savings", date(2026, 2, 28), 1000),
-                (1, "Remove CCs from Apple Pay & Amazon", "Freeze all credit cards", date(2026, 2, 14), None),
-                (1, "Cancel extra gym memberships", "Keep ONE fitness membership", date(2026, 2, 21), None),
-                (1, "Switch groceries to Kroger/Costco", "Reduce grocery spend 30-40%", date(2026, 3, 1), None),
-                (1, "50% spending reduction achieved", "Monthly spend under $13,000", date(2026, 7, 31), 13000),
-                (2, "All Affirm loans paid off", "5 BNPL loans eliminated", date(2027, 2, 28), 0),
+                (1, "Starter Emergency Fund", "Build initial emergency fund", date(2026, 2, 28), 1000),
+                (1, "Freeze credit cards", "Remove cards from digital wallets", date(2026, 2, 14), None),
+                (1, "Cancel unnecessary subscriptions", "Keep only essential services", date(2026, 2, 21), None),
+                (1, "Reduce grocery spending", "Switch to budget-friendly stores", date(2026, 3, 1), None),
+                (1, "Spending reduction achieved", "Hit monthly spending target", date(2026, 7, 31), None),
+                (2, "All BNPL loans paid off", "BNPL loans eliminated", date(2027, 2, 28), 0),
                 (2, "All credit card debt eliminated", "CC balances at $0", date(2027, 6, 30), 0),
-                (2, "All non-mortgage debt eliminated", "Baby Step 2 complete", date(2028, 1, 31), 0),
-                (3, "12-month emergency fund", "$156,000 in HYSA", date(2029, 7, 31), 156000),
-                (3, "15% retirement contributions", "Max 401k + Roth IRA", date(2028, 6, 30), 38400),
-                (4, "12+ months runway built", "Ready for job transition", date(2030, 12, 31), 156000),
+                (2, "All non-mortgage debt eliminated", "Debt avalanche complete", date(2028, 1, 31), 0),
+                (3, "Full emergency fund", "12 months expenses in HYSA", date(2029, 7, 31), None),
+                (3, "15% retirement contributions", "Max retirement accounts", date(2028, 6, 30), None),
+                (4, "12+ months runway built", "Ready for career transition", date(2030, 12, 31), None),
             ]
             for phase, name, desc, target_date, amount in milestones:
                 db.add(Milestone(

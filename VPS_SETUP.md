@@ -239,19 +239,19 @@ sudo dpkg-reconfigure -plow unattended-upgrades
 
 ## Quick Reference
 
-| Action | Command |
-|--------|---------|
-| Start all services | `cd ~/monkey && docker compose up -d` |
-| Stop all services | `cd ~/monkey && docker compose down` |
-| Rebuild after code changes | `cd ~/monkey && git pull && docker compose up -d --build` |
-| View backend logs | `docker compose logs -f backend` |
-| View all logs | `docker compose logs -f` |
-| Manual backup | `~/backup.sh` |
-| Renew SSL | `sudo certbot renew` |
-| Check disk space | `df -h` |
-| Check running containers | `docker compose ps` |
-| Reload host nginx | `sudo systemctl reload nginx` |
-| Access database | `docker compose exec backend python -c "import sqlite3; db=sqlite3.connect('data/stopmonkey.db'); print(db.execute('SELECT count(*) FROM transactions').fetchone())"` |
+| Action                     | Command                                                                                                                                                               |
+| -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Start all services         | `cd ~/monkey && docker compose up -d`                                                                                                                                 |
+| Stop all services          | `cd ~/monkey && docker compose down`                                                                                                                                  |
+| Rebuild after code changes | `cd ~/monkey && git pull && docker compose up -d --build`                                                                                                             |
+| View backend logs          | `docker compose logs -f backend`                                                                                                                                      |
+| View all logs              | `docker compose logs -f`                                                                                                                                              |
+| Manual backup              | `~/backup.sh`                                                                                                                                                         |
+| Renew SSL                  | `sudo certbot renew`                                                                                                                                                  |
+| Check disk space           | `df -h`                                                                                                                                                               |
+| Check running containers   | `docker compose ps`                                                                                                                                                   |
+| Reload host nginx          | `sudo systemctl reload nginx`                                                                                                                                         |
+| Access database            | `docker compose exec backend python -c "import sqlite3; db=sqlite3.connect('data/stopmonkey.db'); print(db.execute('SELECT count(*) FROM transactions').fetchone())"` |
 
 ---
 
