@@ -1,3 +1,4 @@
+import React from 'react'
 import { Routes, Route, Navigate, Link, useLocation } from 'react-router-dom'
 import { useAuth } from './context/AuthContext'
 import Login from './pages/Login'
@@ -5,6 +6,7 @@ import Dashboard from './pages/Dashboard'
 import WeekCalendar from './pages/WeekCalendar'
 import Transactions from './pages/Transactions'
 import Loans from './pages/Loans'
+import DebtPayoff from './pages/DebtPayoff'
 import Budget from './pages/Budget'
 import Import from './pages/Import'
 import Reports from './pages/Reports'
@@ -16,19 +18,40 @@ function ProtectedRoute({ children }) {
   return children
 }
 
+// Main navigation items (always visible)
 const NAV_ITEMS = [
   { path: '/', label: 'Dashboard', icon: '📊' },
-  { path: '/calendar', label: 'Calendar', icon: '📅' },
-  { path: '/transactions', label: 'Transactions', icon: '💳' },
-  { path: '/loans', label: 'Loans', icon: '🏦' },
+  { path: '/debt-payoff', label: 'Debt Payoff', icon: '💰' },
   { path: '/budget', label: 'Budget', icon: '📋' },
-  { path: '/import', label: 'Import', icon: '📤' },
+  { path: '/transactions', label: 'Transactions', icon: '💳' },
+]
+
+// Secondary menu items (utility)
+const SECONDARY_ITEMS = [
+  { path: '/calendar', label: 'Calendar', icon: '📅' },
+  { path: '/loans', label: 'Loans', icon: '🏦' },
   { path: '/reports', label: 'Reports', icon: '📈' },
+  { path: '/import', label: 'Import', icon: '📤' },
 ]
 
 function Layout({ children }) {
   const { logout, user } = useAuth()
   const location = useLocation()
+  const [showMore, setShowMore] = React.useState(false)
+  const dropdownRef = React.useRef(null)
+
+  const isSecondaryActive = SECONDARY_ITEMS.some(item => item.path === location.pathname)
+
+  // Close dropdown when clicking outside
+  React.useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setShowMore(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -37,7 +60,7 @@ function Layout({ children }) {
           <div className="flex items-center justify-between h-16">
             <Link to="/" className="flex items-center gap-2">
               <span className="text-2xl">🐵</span>
-              <span className="font-bold text-lg">Stop The Monkey</span>
+              <span className="font-bold text-lg hidden sm:block">Stop The Monkey</span>
             </Link>
             <div className="hidden md:flex items-center gap-1">
               {NAV_ITEMS.map(item => (
@@ -53,9 +76,40 @@ function Layout({ children }) {
                   {item.icon} {item.label}
                 </Link>
               ))}
+              {/* More dropdown */}
+              <div className="relative" ref={dropdownRef}>
+                <button
+                  onClick={() => setShowMore(!showMore)}
+                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                    isSecondaryActive || showMore
+                      ? 'bg-gray-700 text-white'
+                      : 'text-gray-300 hover:bg-gray-700 hover:text-white'
+                  }`}
+                >
+                  ⋯ More
+                </button>
+                {showMore && (
+                  <div className="absolute right-0 mt-2 w-48 bg-gray-800 rounded-md shadow-lg py-1 z-50 border border-gray-700">
+                    {SECONDARY_ITEMS.map(item => (
+                      <Link
+                        key={item.path}
+                        to={item.path}
+                        onClick={() => setShowMore(false)}
+                        className={`block px-4 py-2 text-sm transition-colors ${
+                          location.pathname === item.path
+                            ? 'bg-gray-700 text-white'
+                            : 'text-gray-300 hover:bg-gray-700 hover:text-white'
+                        }`}
+                      >
+                        {item.icon} {item.label}
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
             <div className="flex items-center gap-3">
-              <span className="text-sm text-gray-400">{user?.username}</span>
+              <span className="text-sm text-gray-400 hidden sm:block">{user?.username}</span>
               <button
                 onClick={logout}
                 className="text-sm text-gray-400 hover:text-white"
@@ -67,7 +121,7 @@ function Layout({ children }) {
         </div>
         {/* Mobile nav */}
         <div className="md:hidden flex overflow-x-auto px-2 pb-2 gap-1">
-          {NAV_ITEMS.map(item => (
+          {[...NAV_ITEMS, ...SECONDARY_ITEMS].map(item => (
             <Link
               key={item.path}
               to={item.path}
@@ -99,6 +153,7 @@ export default function App() {
               <Route path="/calendar" element={<WeekCalendar />} />
               <Route path="/transactions" element={<Transactions />} />
               <Route path="/loans" element={<Loans />} />
+              <Route path="/debt-payoff" element={<DebtPayoff />} />
               <Route path="/budget" element={<Budget />} />
               <Route path="/import" element={<Import />} />
               <Route path="/reports" element={<Reports />} />
