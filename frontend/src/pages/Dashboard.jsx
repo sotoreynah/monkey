@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 import api from '../services/api'
 import { formatCurrency } from '../utils/formatters'
+import EmergencyFundWidget from '../components/EmergencyFundWidget'
 
 function MetricCard({ label, value, sub, color = 'text-gray-900', bg = 'bg-white' }) {
   return (
@@ -80,6 +81,11 @@ export default function Dashboard() {
           value={formatCurrency(data.emergency_fund)}
           sub="Target: $156,000"
         />
+      </div>
+
+      {/* Emergency Fund Widget */}
+      <div className="mb-8">
+        <EmergencyFundWidget />
       </div>
 
       {/* Spending trend chart */}
