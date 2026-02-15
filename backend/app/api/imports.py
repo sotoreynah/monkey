@@ -20,6 +20,8 @@ settings = get_settings()
 async def upload_csv(
     file: UploadFile = File(...),
     source_id: int | None = Form(None),
+    source_name: str | None = Form(None),
+    source_format: str | None = Form(None),
     db: Session = Depends(get_db),
     _: User = Depends(get_current_user),
 ):
@@ -43,7 +45,7 @@ async def upload_csv(
 
     try:
         service = ImportService(db)
-        result = service.import_csv(file_path, file_hash, file.filename, source_id)
+        result = service.import_csv(file_path, file_hash, file.filename, source_id, source_name, source_format)
         return result
     except ValueError as e:
         os.remove(file_path)
@@ -73,6 +75,17 @@ def import_history(db: Session = Depends(get_db), _: User = Depends(get_current_
 
 @router.get("/sources")
 def list_sources(db: Session = Depends(get_db), _: User = Depends(get_current_user)):
-    """List available transaction sources for manual selection during import"""
-    sources = db.query(TransactionSource).filter(TransactionSource.active == True).all()
+    """List transaction sources with actual transactions (in use)"""
+    from sqlalchemy import func
+    from app.models.transaction import Transaction
+    
+    # Only return sources that have at least one transaction
+    sources = (
+        db.query(TransactionSource)
+        .join(Transaction, Transaction.source_id == TransactionSource.id)
+        .filter(TransactionSource.active == True)
+        .group_by(TransactionSource.id)
+        .having(func.count(Transaction.id) > 0)
+        .all()
+    )
     return [{"id": s.id, "name": s.name, "type": s.type} for s in sources]

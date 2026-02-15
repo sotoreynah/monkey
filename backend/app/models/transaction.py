@@ -12,6 +12,7 @@ class TransactionSource(Base):
     type = Column(String, nullable=False)  # credit_card, checking, savings
     last_four = Column(String)
     institution = Column(String)
+    format_hint = Column(String)  # Parser format to use (e.g., "AMEX", "Checking 1569")
     active = Column(Boolean, default=True)
     created_at = Column(DateTime, server_default=func.now())
 

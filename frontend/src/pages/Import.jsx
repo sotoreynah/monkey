@@ -29,6 +29,15 @@ export default function Import() {
   const [showLoanForm, setShowLoanForm] = useState(false)
   const [sources, setSources] = useState([])
   const [selectedSource, setSelectedSource] = useState('')
+  const [customSourceName, setCustomSourceName] = useState('')
+  const [selectedFormat, setSelectedFormat] = useState('')
+
+  const availableFormats = [
+    { value: 'AMEX', label: 'AMEX' },
+    { value: 'Apple Card', label: 'Apple Card' },
+    { value: 'Credit Card 6032', label: 'Credit Card 6032 (IS Bank)' },
+    { value: 'Checking 1569', label: 'Checking 1569 (IS Bank)' },
+  ]
 
   useEffect(() => {
     api.get('/imports/history').then(res => setHistory(res.data)).catch(console.error)
@@ -40,13 +49,25 @@ export default function Import() {
     const file = acceptedFiles[0]
     if (!file) return
 
+    // Validation
+    if (customSourceName && !selectedFormat) {
+      setError('Please select a format when using a custom source name')
+      return
+    }
+
     setUploading(true)
     setResult(null)
     setError(null)
 
     const formData = new FormData()
     formData.append('file', file)
-    if (selectedSource) {
+    
+    if (customSourceName) {
+      // User typed a custom source name
+      formData.append('source_name', customSourceName)
+      formData.append('source_format', selectedFormat)
+    } else if (selectedSource) {
+      // User selected existing source from dropdown
       formData.append('source_id', selectedSource)
     }
 
@@ -55,14 +76,20 @@ export default function Import() {
         headers: { 'Content-Type': 'multipart/form-data' },
       })
       setResult(res.data)
+      // Refresh lists
       const h = await api.get('/imports/history')
       setHistory(h.data)
+      const s = await api.get('/imports/sources')
+      setSources(s.data)
+      // Clear custom fields after successful import
+      setCustomSourceName('')
+      setSelectedFormat('')
     } catch (err) {
       setError(err.response?.data?.detail || 'Upload failed')
     } finally {
       setUploading(false)
     }
-  }, [])
+  }, [selectedSource, customSourceName, selectedFormat])
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -122,24 +149,84 @@ export default function Import() {
 
       {/* Source Selection */}
       <div className="bg-white rounded-xl shadow p-6 mb-6">
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Transaction Source <span className="text-red-500">*</span>
-        </label>
-        <select
-          value={selectedSource}
-          onChange={(e) => setSelectedSource(e.target.value)}
-          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-        >
-          <option value="">⚠️ Auto-detect (may be inaccurate)</option>
-          {sources.map(s => (
-            <option key={s.id} value={s.id}>
-              {s.name} ({s.type})
-            </option>
-          ))}
-        </select>
-        <p className="text-xs text-gray-500 mt-2">
-          <strong>⚠️ Manual selection recommended:</strong> Files with identical columns (Date, Transaction, Name, Memo, Amount) 
-          can be from different sources. Choose the correct source to avoid mis-categorization.
+        <h3 className="text-lg font-semibold mb-4">Transaction Source</h3>
+        
+        {/* Option 1: Select existing source */}
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Select Existing Source
+          </label>
+          <select
+            value={selectedSource}
+            onChange={(e) => {
+              setSelectedSource(e.target.value)
+              setCustomSourceName('') // Clear custom name when selecting existing
+            }}
+            disabled={customSourceName !== ''}
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent disabled:bg-gray-100"
+          >
+            <option value="">⚠️ Auto-detect (may be inaccurate)</option>
+            {sources.map(s => (
+              <option key={s.id} value={s.id}>
+                {s.name} ({s.type})
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="flex items-center gap-3 my-4">
+          <div className="flex-1 border-t border-gray-300"></div>
+          <span className="text-sm text-gray-500 font-medium">OR</span>
+          <div className="flex-1 border-t border-gray-300"></div>
+        </div>
+
+        {/* Option 2: Add new source */}
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              New Source Name
+            </label>
+            <input
+              type="text"
+              value={customSourceName}
+              onChange={(e) => {
+                setCustomSourceName(e.target.value)
+                setSelectedSource('') // Clear selection when typing custom name
+              }}
+              placeholder="e.g., AMEX - Wife's Card, IS Bank - Checking (Joint)"
+              disabled={selectedSource !== ''}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent disabled:bg-gray-100"
+            />
+          </div>
+
+          {customSourceName && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                File Format <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={selectedFormat}
+                onChange={(e) => setSelectedFormat(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                required={customSourceName !== ''}
+              >
+                <option value="">Select format...</option>
+                {availableFormats.map(f => (
+                  <option key={f.value} value={f.value}>
+                    {f.label}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-gray-500 mt-1">
+                Choose the CSV format that matches your file's column structure
+              </p>
+            </div>
+          )}
+        </div>
+
+        <p className="text-xs text-gray-500 mt-4">
+          <strong>⚠️ Manual selection recommended:</strong> Files with identical columns can be from different sources. 
+          Specify the correct source to avoid mis-categorization.
         </p>
       </div>
 

@@ -14,7 +14,19 @@ router = APIRouter(prefix="/api/transactions", tags=["transactions"])
 
 @router.get("/sources", response_model=list[TransactionSourceResponse])
 def get_sources(db: Session = Depends(get_db), _: User = Depends(get_current_user)):
-    return db.query(TransactionSource).all()
+    """List transaction sources that have at least one transaction"""
+    from sqlalchemy import func
+    
+    # Only return sources that have transactions
+    sources = (
+        db.query(TransactionSource)
+        .join(Transaction, Transaction.source_id == TransactionSource.id)
+        .filter(TransactionSource.active == True)
+        .group_by(TransactionSource.id)
+        .having(func.count(Transaction.id) > 0)
+        .all()
+    )
+    return sources
 
 
 @router.get("", response_model=dict)

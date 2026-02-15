@@ -37,8 +37,41 @@ class ImportService:
         }
         parser_cls = parser_map.get(source.name)
         if not parser_cls:
-            raise ValueError(f"No parser found for source: {source.name}")
+            # Try by format_hint if name doesn't match
+            return self._get_parser_by_format(source.format_hint or source.name)
         return parser_cls()
+    
+    def _get_parser_by_format(self, format_name: str):
+        """Get parser by format name"""
+        parser_map = {
+            "Credit Card 6032": CreditCard6032Parser,
+            "Checking": Checking1569Parser,
+            "Checking 1569": Checking1569Parser,
+            "Apple Card": AppleCardParser,
+            "AMEX": AmexParser,
+        }
+        parser_cls = parser_map.get(format_name)
+        if not parser_cls:
+            raise ValueError(f"Unknown format: {format_name}. Supported: {', '.join(parser_map.keys())}")
+        return parser_cls()
+    
+    def _get_or_create_custom_source(self, name: str, format_name: str, source_type: str) -> TransactionSource:
+        """Get or create a source with custom name"""
+        source = self.db.query(TransactionSource).filter(
+            TransactionSource.name == name
+        ).first()
+        if not source:
+            source = TransactionSource(
+                name=name,
+                type=source_type,
+                institution=name,
+                format_hint=format_name,  # Store format for future use
+                active=True,
+            )
+            self.db.add(source)
+            self.db.commit()
+            self.db.refresh(source)
+        return source
 
     def get_or_create_source(self, parser) -> TransactionSource:
         source = self.db.query(TransactionSource).filter(
@@ -56,13 +89,29 @@ class ImportService:
             self.db.refresh(source)
         return source
 
-    def import_csv(self, file_path: str, file_hash: str, filename: str, source_id: int | None = None) -> dict:
+    def import_csv(
+        self, 
+        file_path: str, 
+        file_hash: str, 
+        filename: str, 
+        source_id: int | None = None,
+        source_name: str | None = None,
+        source_format: str | None = None
+    ) -> dict:
         if source_id:
-            # Use manually selected source
+            # Use manually selected source by ID
             source = self.db.query(TransactionSource).get(source_id)
             if not source:
                 raise ValueError(f"Source ID {source_id} not found")
             parser = self._get_parser_for_source(source)
+        elif source_name and source_format:
+            # Create or get source with custom name but specified format
+            parser = self._get_parser_by_format(source_format)
+            source = self._get_or_create_custom_source(source_name, source_format, parser.SOURCE_TYPE)
+        elif source_name:
+            # Custom source name but auto-detect format
+            parser = self.detect_parser(file_path)
+            source = self._get_or_create_custom_source(source_name, parser.SOURCE_NAME, parser.SOURCE_TYPE)
         else:
             # Auto-detect (existing behavior)
             parser = self.detect_parser(file_path)
