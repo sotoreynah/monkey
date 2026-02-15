@@ -2,7 +2,7 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import get_settings
-from app.api import auth, transactions, loans, plan, dashboard, imports, budget, reports
+from app.api import auth, transactions, loans, plan, dashboard, imports, budget, reports, debt_payoff, emergency_fund
 from app.seed.init_db import init_database
 
 settings = get_settings()
@@ -28,6 +28,8 @@ app.include_router(auth.router)
 app.include_router(dashboard.router)
 app.include_router(transactions.router)
 app.include_router(loans.router)
+app.include_router(debt_payoff.router)
+app.include_router(emergency_fund.router)
 app.include_router(plan.router)
 app.include_router(imports.router)
 app.include_router(budget.router)

@@ -12,6 +12,7 @@ class FinancialPlan(Base):
     end_date = Column(Date, nullable=False)
     total_weeks = Column(Integer, nullable=False)
     total_months = Column(Integer, nullable=False)
+    monthly_payment_capacity = Column(Float, default=5413.0)  # Total monthly debt payment capacity
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, server_default=func.now())
 
